@@ -1,7 +1,8 @@
+#include <fstream>
 #include "Ram.h"
 
 Ram::Ram()
-    : mainMemory{}
+    :   mainMemory{}
 {
 }
 
@@ -27,4 +28,18 @@ int Ram::readMem(const int index) const
 bool Ram::validateRange(const int index) const
 {
     return (index >= 0 && index < MEMORY_SIZE);
+}
+
+void Ram::memDump() const
+{
+    std::ofstream output;
+    output.open("memDump.txt");
+    if(output.is_open())
+    {
+        for(int i = 0 ; i < MEMORY_SIZE ; i++)
+        {
+            output << "Address " << i << ":\t\t" << static_cast<int>(mainMemory[i]) << std::endl;
+        }
+        output.close();
+    }
 }
