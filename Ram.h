@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <cstdint>
+#include <fstream>
 
 /* Random Access Memory Container*/
 class Ram
