@@ -37,7 +37,7 @@ void Ram::memDump() const
     {
         for(int i = 0 ; i < MEMORY_SIZE ; i++)
         {
-            output << "Address " << i << ":\t\t" << static_cast<int>(mainMemory[i]) << std::endl;
+            output << std::dec << "Address " << i << ":\t\t" << std::hex << static_cast<int>(mainMemory[i]) << std::endl;
         }
         output.close();
     }

@@ -3,15 +3,18 @@
 
 #include "Font.h"
 #include "Ram.h"
+#include <fstream>
 
 class Chip
 {
-    public:    
-        Chip();
+    public:
+        Chip(std::string fileName);
 
     private:
+        uint16_t programCounter;
         Font font;
         Ram ram;
+
 };
 
 #endif
