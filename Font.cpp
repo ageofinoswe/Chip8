@@ -1,6 +1,6 @@
 #include "Font.h"
 
-Font::Font() : defaultFont()
+Font::Font() : defaultFont{}
 {
     const int chip8DefaultFont[] = {    
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
