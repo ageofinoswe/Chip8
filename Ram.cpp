@@ -5,7 +5,7 @@ Ram::Ram()
 {
 }
 
-bool Ram::setMem(const int index, const int value)
+bool Ram::setMem(const int index, const uint8_t value)
 {
     if(validateRange(index))
     {
@@ -15,7 +15,7 @@ bool Ram::setMem(const int index, const int value)
     return false;
 }
 
-int Ram::readMem(const int index) const
+uint8_t Ram::readMem(const int index) const
 {
     if(validateRange(index))
     {

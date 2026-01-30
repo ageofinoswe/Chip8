@@ -13,10 +13,10 @@ class Ram
         Ram();
         /* write a value to ram at a given index
            returns true if successful, false if out of range */
-        bool setMem(const int index, const int value);
+        bool setMem(const int index, const uint8_t value);
         /* read a value from ram at a given index
            returns value if successful, -1 if out of range */
-        int readMem(const int index) const;
+        uint8_t readMem(const int index) const;
         /* print out the contents of ram */
         void memDump() const;
 
