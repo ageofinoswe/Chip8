@@ -19,9 +19,10 @@ class Chip
         void incrementProgramCounter();
         void decrementProgramCounter();
         void setProgramCounter(uint16_t address);
-        
+
         uint16_t fetch();
-        uint16_t decode();
+        void decode(const uint16_t opCode);
+        void execute(const uint8_t nibbleOne, const uint8_t nibbleTwo, const uint8_t nibbleThree, const uint8_t nibbleFour);
 
         uint8_t generalRegisters[16];
         uint8_t getRegisterValue(const int registerNumber) const;

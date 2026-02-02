@@ -46,13 +46,29 @@ uint16_t Chip::fetch()
     return msb | lsb;
 }
 
+void Chip::decode(const uint16_t opCode)
+{
+    execute((0xF000 & opCode) >> 12, (0x0F00 & opCode) >> 8, (0x00F0 & opCode) >> 4, (0x000F & opCode));
+}
+
+void Chip::execute(const uint8_t nibbleOne, const uint8_t nibbleTwo, const uint8_t nibbleThree, const uint8_t nibbleFour)
+{
+    switch(nibbleThree){
+        case 0: std::cout << "0";
+        break;
+        case 0xe: std::cout << "e";
+        break;
+    }
+}
+
+
 uint8_t Chip::getRegisterValue(const int registerNumber) const
 {
     if(registerNumber >= 0 && (registerNumber < sizeof(generalRegisters) / sizeof(generalRegisters[0])))
     {
         return generalRegisters[registerNumber];
     }
-    
+
     return -1;
 }
 
