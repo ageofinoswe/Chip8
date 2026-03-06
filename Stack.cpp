@@ -1,31 +1,31 @@
 #include "Stack.h"
 
+//public
 Stack::Stack() : stack{}, size(0)
 {
 }
 
-bool Stack::push(uint16_t address)
+void Stack::push(uint16_t address)
 {
     if (size < MAX_SIZE)
     {
         stack[size] = address;
         size++;
-        return true;
     }
-    return false;
 }
 
 uint16_t Stack::pop()
 {
     if (size > 0)
     {
+        uint16_t top = stack[size];
         size--;
-        return stack[size];
+        return top;
     }
     return -1;
 }
 
-bool Stack::isEmpty()
+bool Stack::isEmpty() const
 {
     return size == 0;
 }

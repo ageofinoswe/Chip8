@@ -1,36 +1,67 @@
 #ifndef CHIP_H_
 #define CHIP_H_
 
+#include <fstream>
+#include <string>
 #include "Font.h"
 #include "Ram.h"
-#include <fstream>
+#include "Display.h"
+
+using std::string;
 
 class Chip
 {
     public:
-        /* constructors */
-        // takes in a file/program name and loads into RAM
+        // constructor - takes in a chip8 file
         Chip(std::string fileName);
+        // starts the chip8 emulation
         void start();
 
-
     private:
+        // program counter points to current instruction in memory (12 bits used)
         uint16_t programCounter;
+        // increments the program counter by 2 bytes
         void incrementProgramCounter();
+        // decrements the program counter by 2 bytes
         void decrementProgramCounter();
-        void setProgramCounter(uint16_t address);
+        // set the program counter to a specific address in memory
+        void setProgramCounter(const uint16_t address);
 
-        uint16_t fetch();
-        void decode(const uint16_t opCode);
-        void execute(const uint8_t nibbleOne, const uint8_t nibbleTwo, const uint8_t nibbleThree, const uint8_t nibbleFour);
+        // index register that point to a specific address in memory (12 bits used)
+        uint16_t indexRegister;
+        // gets the current address that the index register is pointing to
+        uint16_t getIndexRegister() const;
+        // sets the index register to a specific address in memory
+        void setIndexRegister(const uint16_t newIndexRegister);
 
+        // 16 general purpose registers (8 bits)
         uint8_t generalRegisters[16];
-        uint8_t getRegisterValue(const int registerNumber) const;
-        uint8_t setRegisterValue(const int registerNumber, const uint8_t value);
+        // gets the value at a specific register
+        uint8_t getRegisterValue(const uint8_t registerNumber) const;
+        // sets a value at a specific register
+        void setRegisterValue(const uint8_t registerNumber, const uint8_t value);
 
+        // 1 fetch, 1 decode, 1 execute instruction
+        void cycle();
+        // fetches the current instruction in memory that the program counter points to
+        uint16_t fetch();
+        // decodes the instruction and sends it to the execute instruction
+        void decode(const uint16_t opCode);
+        // executes the current opcode
+        void execute(const uint16_t nibbleOne, const uint16_t nibbleTwo, const uint16_t nibbleThree, const uint16_t nibbleFour);
+
+        // initialize the chip
+        void initialize(const string fileName);
+
+        // fonts
         Font font;
+        // 4kB RAM
         Ram ram;
-        
+        // 64x32 display
+        Display display;
+
+        // used for debugging purposes
+        void currentStateDebug() const;
 };
 
 #endif

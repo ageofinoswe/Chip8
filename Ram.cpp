@@ -1,18 +1,17 @@
 #include "Ram.h"
 
+// public
 Ram::Ram()
     :   mainMemory{}
 {
 }
 
-bool Ram::setMem(const int index, const uint8_t value)
+void Ram::setMem(const int index, const uint8_t value)
 {
     if(validateRange(index))
     {
         mainMemory[index] = value;
-        return true;
     }
-    return false;
 }
 
 uint8_t Ram::readMem(const int index) const
@@ -22,11 +21,6 @@ uint8_t Ram::readMem(const int index) const
         return mainMemory[index];
     }
     return -1;
-}
-
-bool Ram::validateRange(const int index) const
-{
-    return (index >= 0 && index < MEMORY_SIZE);
 }
 
 void Ram::memDump() const
@@ -41,4 +35,10 @@ void Ram::memDump() const
         }
         output.close();
     }
+}
+
+// private
+bool Ram::validateRange(const int index) const
+{
+    return (index >= 0 && index < MEMORY_SIZE);
 }
