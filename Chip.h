@@ -6,6 +6,7 @@
 #include "Font.h"
 #include "Ram.h"
 #include "Display.h"
+#include "Stack.h"
 
 using std::string;
 
@@ -48,7 +49,7 @@ class Chip
         // decodes the instruction and sends it to the execute instruction
         void decode(const uint16_t opCode);
         // executes the current opcode
-        void execute(const uint16_t nibbleOne, const uint16_t nibbleTwo, const uint16_t nibbleThree, const uint16_t nibbleFour);
+        void execute(const uint16_t opCode, const uint16_t instruction, const uint16_t X, const uint16_t Y, const uint16_t N, const uint16_t NN, const uint16_t NNN);
 
         // initialize the chip
         void initialize(const string fileName);
@@ -57,6 +58,8 @@ class Chip
         Font font;
         // 4kB RAM
         Ram ram;
+        // stack for subroutine calls
+        Stack stack;
         // 64x32 display
         Display display;
 
