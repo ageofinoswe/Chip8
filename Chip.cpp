@@ -1,5 +1,8 @@
 #include "Chip.h"
 
+const int SHIFT_IMPLEMENTATION = 1;
+
+
 // public
 Chip::Chip(string fileName)
     : programCounter{0x200}, indexRegister{}, generalRegisters{}
@@ -78,93 +81,278 @@ uint16_t Chip::fetch()
     return msb | lsb;
 }
 
-void Chip::decode(const uint16_t opCode)
-{
-    uint16_t nibbleOne = (0xF000 & opCode) >> 12;
-    uint16_t nibbleTwo = (0x0F00 & opCode) >> 8;
-    uint16_t nibbleThree = (0x00F0 & opCode) >> 4;
-    uint16_t nibbleFour = (0x000F & opCode);
-
-    execute(nibbleOne, nibbleTwo, nibbleThree, nibbleFour);
-}
-
 // 1st nibble - tells you what kind of instruction it is
 // 2nd nibble X - used to look up one of the 16 registers (VX) from V0-VF
 // 3rd nibble Y - used to look up one of the 16 reigtsers (VY) from V0-VF
 // 4th nibble N - a 4 bit number
 // NN (3rd and 4th nibble) - an 8 bit immediate number
 // NNN (2nd, 3rd, 4th nibble) - a 12 bit immediate memory address
-void Chip::execute(const uint16_t nibbleOne, const uint16_t nibbleTwo, const uint16_t nibbleThree, const uint16_t nibbleFour)
+void Chip::decode(const uint16_t opCode)
 {
-    switch(nibbleOne){
-        // CLEAR SCREEN
+    uint16_t instruction = (opCode >> 12) & 0x000F;
+    uint16_t X = (opCode >> 8) & 0x000F;
+    uint16_t Y = (opCode >> 4) & 0x000F;
+    uint16_t N = opCode & 0x000F;
+    uint16_t NN = opCode & 0x00FF;
+    uint16_t NNN = opCode & 0x0FFF;
+
+    execute(opCode, instruction, X, Y, N, NN, NNN);
+}
+
+void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint16_t X, const uint16_t Y, const uint16_t N, const uint16_t NN, const uint16_t NNN)
+{
+    switch(instruction){
         case 0x0:
-            display.clearScreen();
-        break;
-        
-        // JUMP - set PC to NNN
-        case 0x1:
-            setProgramCounter(nibbleTwo << 8  | nibbleThree << 4 | nibbleFour);
-        break;
-        
-        // SET - set register VX to value NN
-        case 0x6:
-            setRegisterValue(nibbleTwo, nibbleThree << 4 | nibbleFour);
-        break;
-        
-        // ADD - add NN to VX
-        case 0x7:
-        {
-            uint8_t value = getRegisterValue(nibbleTwo);
-            uint8_t newValue = value + (nibbleThree << 4 | nibbleFour);
-            setRegisterValue(nibbleTwo, newValue);
-        }
-        break;
-
-        // SET INDEX - sets index register I to the value NNN
-        case 0xA: 
-            setIndexRegister(nibbleTwo << 8 | nibbleThree << 4 | nibbleFour);
-        break;
-
-        // DISPLAY & DRAW
-        // draws left --> right, then up --> down
-        case 0xD:
-        {
-            // get column and row coordinates
-            int x = getRegisterValue(nibbleTwo) % Display::WIDTH; // column
-            int y = getRegisterValue(nibbleThree) % Display::HEIGHT; // row
-            setRegisterValue(0xF, 0);
-
-            for(int row = 0 ; row < nibbleFour ; row++)
+            // clear screen
+            if(opCode == 0x00E0)
             {
-                uint8_t rowData = ram.readMem(indexRegister + row);
-                for(int i = 0 ; i < 8 ; i++)
+                display.clearScreen();
+            }
+            // subroutine - return from a subroutine, pop the program counter back
+            if(opCode == 0x00EE)
+            {
+                setProgramCounter(stack.pop());
+            }
+        break;
+        
+        case 0x1:
+            // jump - set PC to NNN
+            setProgramCounter(NNN);
+        break;
+
+        case 0x2:
+            // subroutine - call a subroutine, push program counter and set PC to NNN
+            {
+                stack.push(programCounter);
+                setProgramCounter(NNN);
+            }
+        break;
+        
+        case 0x3:
+            // skip conditionally - skip 1 instruction if VX == NN
+            {
+                if(getRegisterValue(X) == NN)
                 {
-                    int bit = (rowData >> (7 - i)) & 1; // get the most significant bit from the byte
-                    if(y < Display::HEIGHT)
+                    incrementProgramCounter();
+                }
+            }
+        break;
+
+        case 0x4:
+            // skip conditionally - skip 1 instruction if VX != NN
+            {
+                if(getRegisterValue(X) != NN)
+                {
+                    incrementProgramCounter();
+                }
+            }
+        break;
+
+        case 0x5:
+            // skip conditionally - skip 1 instruction if VX == VY
+            {
+                if(getRegisterValue(X) == getRegisterValue(Y))
+                {
+                    incrementProgramCounter();
+                }
+            }
+        break;
+
+        case 0x6:
+            // set - set register VX to value NN
+            setRegisterValue(X, NN);
+        break;
+        
+        case 0x7:
+            // add - add NN to VX
+            {
+                uint8_t value = getRegisterValue(X);
+                uint8_t newValue = value + (NN);
+                setRegisterValue(X, newValue);
+            }
+        break;
+
+        case 0x8:
+            switch(opCode & 0xF00F)
+            {   
+                // set - Vx is set to Vy
+                case 0x8000:
                     {
-                        if(x + i < Display::WIDTH)
+                        uint8_t Vy = getRegisterValue(Y);
+                        setRegisterValue(X, Vy);
+                    }
+                break;
+
+                // binary or - Vx is set to (Vx OR Vy)
+                case 0x8001:
+                    {
+                        uint8_t VxOrVy = getRegisterValue(X) | getRegisterValue(Y);
+                        setRegisterValue(X, VxOrVy);
+                    }
+                break;
+
+                // binary and - Vx is set to (Vx AND Vy)
+                case 0x8002:
+                    {
+                        uint8_t VxAndVy = getRegisterValue(X) & getRegisterValue(Y);
+                        setRegisterValue(X, VxAndVy);
+                    }
+                break;
+
+                // logical xor - Vx is set to (Vx XOR Vy)
+                case 0x8003:
+                    {
+                        uint8_t VxXorVy = getRegisterValue(X) ^ getRegisterValue(Y);
+                        setRegisterValue(X, VxXorVy);
+                    }
+                break;
+
+                // add - Vx = Vx + Vy, VF is set for overflow
+                case 0x8004:
+                    {
+                        uint16_t sum = getRegisterValue(X) + getRegisterValue(Y);
+                        if(sum > 0xFF)
                         {
-                            if(display.isOn(x, y) && bit)
-                            {
-                                display.setPixel(x, y, false);
-                                setRegisterValue(0xF, 1);
-                            }
-                            else if(bit)
-                            {
-                                display.setPixel(x, y, true);
-                            }
+                            setRegisterValue(0xF, 1);
+                        }
+                        setRegisterValue(X, sum & 0xFF);
+                    }
+                break;
+
+                // subtract - Vx = Vx - Vy, VF is set for underflow
+                case 0x8005:
+                    {
+                        setRegisterValue(0xF, 1);
+                        if(getRegisterValue(Y) > getRegisterValue(X))
+                        {
+                            setRegisterValue(0xF, 0);
+                        }
+                        uint8_t difference = getRegisterValue(X) - getRegisterValue(Y);
+                        setRegisterValue(X, difference);
+                    }
+                break;
+
+                // subtrtact - Vx = Vy - Vx, VF is set for underflow
+                case 0x8007:
+                    {
+                        setRegisterValue(0xF, 1);
+                        if(getRegisterValue(X) > getRegisterValue(Y))
+                        {
+                            setRegisterValue(0xF, 0);
+                        }
+                        uint8_t difference = getRegisterValue(Y) - getRegisterValue(X);
+                        setRegisterValue(X, difference);
+                    }
+                break;
+
+                // shift IMPLEMENTATION 1 - set Vx to Vy, shift Vx 1 bit to the right, store shifted bit into VF
+                // shift IMPLEMENTATION 2 - shift Vx 1 bit to the right, store shifted bit into VF
+                case 0x8006:
+                    {
+                        if(SHIFT_IMPLEMENTATION == 1)
+                        {
+                            uint8_t Vy = getRegisterValue(Y);
+                            setRegisterValue(X, Vy);
+
+                            uint8_t shiftedBit = getRegisterValue(X) & 1;
+                            setRegisterValue(0xF, shiftedBit);
+
+                            uint8_t VxShifted = getRegisterValue(X) >> 1;
+                            setRegisterValue(X, VxShifted);
+                        }
+                        else if(SHIFT_IMPLEMENTATION == 2)
+                        {
+                            uint8_t shiftedBit = X & 1;
+                            setRegisterValue(0xF, shiftedBit);
+
+                            uint8_t VxShifted = getRegisterValue(X) >> 1;
+                            setRegisterValue(X, VxShifted);
                         }
                     }
-                    x++; // go to next pixel in sprite column
-                }
-                // move down to next row and reset column coordinate
-                y++;
-                x = getRegisterValue(nibbleTwo) % Display::WIDTH;
+                break;
+
+                // shift IMPLEMENTATION 1 - set Vx to Vy, shift Vx 1 bit to the left, store shifted bit into VF
+                // shift IMPLEMENTATION 2 - shift Vx 1 bit to the left, store shifted bit into VF
+                case 0x800E:
+                    {
+                        if(SHIFT_IMPLEMENTATION == 1)
+                        {
+                            uint8_t Vy = getRegisterValue(Y);
+                            setRegisterValue(X, Vy);
+
+                            uint8_t shiftedBit = (getRegisterValue(X) >> 7) & 1;
+                            setRegisterValue(0xF, shiftedBit);
+
+                            uint8_t VxShifted = getRegisterValue(X) << 1;
+                            setRegisterValue(X, VxShifted);
+                        }
+                        else if(SHIFT_IMPLEMENTATION == 2)
+                        {
+                            uint8_t shiftedBit = (getRegisterValue(X) >> 7) & 1;
+                            setRegisterValue(0xF, shiftedBit);
+
+                            uint8_t VxShifted = getRegisterValue(X) << 1;
+                            setRegisterValue(X, VxShifted);
+                        }
+                    }
+                break;
             }
-            // draw final sprite
-            display.draw();
-        }
+        break;
+
+        case 0x9:
+            // skip conditionally - skip 1 instruction if VX !== VY
+            {
+                if(getRegisterValue(X) != getRegisterValue(Y))
+                {
+                    incrementProgramCounter();
+                }
+            }
+        break;
+
+        case 0xA: 
+            // set index - sets index register I to the value NNN
+            setIndexRegister(NNN);
+        break;
+
+        case 0xD:
+            {
+                // display & draw
+                // draws left --> right, then up --> down
+                // get column and row coordinates
+                int x = getRegisterValue(X) % Display::WIDTH; // column
+                int y = getRegisterValue(Y) % Display::HEIGHT; // row
+                setRegisterValue(0xF, 0);
+
+                for(int row = 0 ; row < N ; row++)
+                {
+                    uint8_t rowData = ram.readMem(indexRegister + row);
+                    for(int i = 0 ; i < 8 ; i++)
+                    {
+                        int bit = (rowData >> (7 - i)) & 1; // get the most significant bit from the byte
+                        if(y < Display::HEIGHT)
+                        {
+                            if(x + i < Display::WIDTH)
+                            {
+                                if(display.isOn(x, y) && bit)
+                                {
+                                    display.setPixel(x, y, false);
+                                    setRegisterValue(0xF, 1);
+                                }
+                                else if(bit)
+                                {
+                                    display.setPixel(x, y, true);
+                                }
+                            }
+                        }
+                        x++; // go to next pixel in sprite column
+                    }
+                    // move down to next row and reset column coordinate
+                    y++;
+                    x = getRegisterValue(X) % Display::WIDTH;
+                }
+                // draw final sprite
+                display.draw();
+            }
         break;
     }
 }
