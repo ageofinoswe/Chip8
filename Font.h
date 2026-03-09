@@ -1,15 +1,20 @@
 #ifndef FONT_H_
 #define FONT_H_
-
+#include <cstdint>
 
 class Font
 {
     public:
+        // constructor
         Font();
-        const int* getDefaultFont() const;
+        // gets the default font data
+        const uint8_t* getDefaultFont() const;
+        // size of the default font data
+        static constexpr int SIZE = 80;
 
     private:
-        int defaultFont[80];
+        // an array of the default font data
+        uint8_t defaultFont[SIZE];
 };
 
 #endif
