@@ -18,7 +18,7 @@ uint16_t Stack::pop()
 {
     if (size > 0)
     {
-        uint16_t top = stack[size];
+        uint16_t top = stack[size - 1];
         size--;
         return top;
     }
