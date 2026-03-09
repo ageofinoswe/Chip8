@@ -1,6 +1,7 @@
 #ifndef DISPLAY_H_
 #define DISPLAY_H_
 
+#include <cstdint>
 #include <SDL3/SDL.h>
 
 // 64x32 display for chip8

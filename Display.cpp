@@ -9,7 +9,6 @@ Display::Display()
 
 void Display::setPixel(const int coordX, const int coordY, bool isOn)
 {
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     displayBuffer[coordY][coordX] = isOn;
 }
 
@@ -20,6 +19,9 @@ bool Display::isOn(const int coordX, const int coordY) const
 
 void Display::draw() const
 {
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     for(int row = 0 ; row < HEIGHT ; row++)
     {
         for(int col = 0 ; col < WIDTH ; col++)
@@ -36,9 +38,6 @@ void Display::draw() const
 void Display::clearScreen()
 {
     iterateDisplay(false);
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
 }
 
 void Display::destroyWindow() const
