@@ -3,6 +3,8 @@
 
 #include <fstream>
 #include <string>
+#include <cstdint>
+#include <chrono>
 #include "Font.h"
 #include "Ram.h"
 #include "Display.h"
@@ -62,6 +64,10 @@ class Chip
         Stack stack;
         // 64x32 display
         Display display;
+
+        // delay timer, sound timer,  60Hz
+        uint8_t delayTimer;
+        uint8_t soundTimer;
 
         // used for debugging purposes
         void currentStateDebug() const;
