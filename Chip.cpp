@@ -1,4 +1,5 @@
 #include "Chip.h"
+#include <windows.h>
 
 const int SHIFT_IMPLEMENTATION = 2;
 const int JUMP_OFFSET_IMPLEMENTATION = 2;
@@ -14,9 +15,23 @@ Chip::Chip(string fileName)
 
 void Chip::start()
 {
+    const int CPU_HZ = 300;
+    const int SOUND_TIMER_HZ = 60;
+    const int DELAY_TIMER_HZ = 60;
+    const int FPS = 60;
+
+    const double CPU_CYCLE_SPEED = 1.0 / CPU_HZ;
+    const double SOUND_TIMER_SPEED = 1.0 / SOUND_TIMER_HZ;
+    const double DELAY_TIMER_SPEED = 1.0 / DELAY_TIMER_HZ;
+    const double FRAMETIME = 1.0 / FPS;
+
+    double cpuAccumulator = 0;
+    double soundAccumulator = 0;
+    double delayAccumulator = 0;
+    double frametimeAccumulator = 0;
+
+    std::chrono::time_point t1 = std::chrono::steady_clock::now();
     bool running = true;
-    const double frameTime = 1.0 / 700;
-    std::cout << frameTime;
     while(running)
     {
         SDL_Event event;
@@ -27,7 +42,43 @@ void Chip::start()
                 running = false;
             }
         }
-        cycle();
+        std::chrono::time_point t2 = std::chrono::steady_clock::now();
+        std::chrono::duration<double> dt = t2 - t1;
+        double elapsed = dt.count();
+        cpuAccumulator += elapsed;
+        soundAccumulator += elapsed;
+        delayAccumulator += elapsed;
+        frametimeAccumulator += elapsed;
+        t1 = t2;
+
+        while(cpuAccumulator >= CPU_CYCLE_SPEED)
+        {
+            cycle();
+            cpuAccumulator -= CPU_CYCLE_SPEED;
+        }
+        while(soundAccumulator >= SOUND_TIMER_SPEED)
+        {
+            if(soundTimer > 0)
+            {
+                Beep(2000, SOUND_TIMER_SPEED * 1000);
+                soundTimer--;
+            }
+            soundAccumulator -= SOUND_TIMER_SPEED;
+        }
+        while(delayAccumulator >= DELAY_TIMER_SPEED)
+        {
+            if(delayTimer > 0)
+            {
+                delayTimer--;
+            }
+            delayAccumulator -= DELAY_TIMER_SPEED;
+        }
+        while(frametimeAccumulator >= FRAMETIME)
+        {
+            display.draw();
+            frametimeAccumulator -= FRAMETIME;
+        }
+
     }
     display.destroyWindow();
 }
@@ -392,9 +443,6 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 y++;
                 x = getRegisterValue(X) % Display::WIDTH;
             }
-            // draw final sprite
-            display.draw();
-            SDL_Delay(100);
         }
         break;
 
@@ -403,31 +451,36 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
             {
 //
                 case 0xE09E:
-                std::cout << "0xE09E" << std::endl;
-                break;
+/*                 std::cout << "0xE09E" << std::endl;
+ */                break;
 //
                 case 0xE0A1:
-                std::cout << "0xE0A1" << std::endl;
-                break;
+/*                 std::cout << "0xE0A1" << std::endl;
+ */                break;
             }
         break;
 
         case 0xF:
             switch(opCode & 0xF0FF)
             {
-//
                 case 0xF007:
-                std::cout << "0xF007" << std::endl;
-                break;
-//
-                case 0xF015:
-                std::cout << "0xF015" << std::endl;
-                break;
-//
-                case 0xF018:
-                std::cout << "0xF018" << std::endl;
+                {
+                    setRegisterValue(X, delayTimer);
+                }
                 break;
 
+                case 0xF015:
+                {
+                    delayTimer = getRegisterValue(X);
+                }
+                break;
+
+                case 0xF018:
+                {
+/*                     std::cout << "increasing sound timer by: " << static_cast<int>(getRegisterValue(X))<<std::endl;
+ */                    soundTimer = getRegisterValue(X);
+                }
+                break;
 
                 // add to index - add to the index register, VX
                 case 0xF01E:
@@ -437,8 +490,8 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 break;
 //
                 case 0xF00A:
-                std::cout << "0xF00A" << std::endl;
-                break;
+/*                 std::cout << "0xF00A" << std::endl;
+ */                break;
 
                 // font character - sets the index register to the address of the hex character in VX (last nibble)
                 case 0xF029:
