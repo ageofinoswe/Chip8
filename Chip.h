@@ -9,6 +9,7 @@
 #include "Ram.h"
 #include "Display.h"
 #include "Stack.h"
+#include "Keypad.h"
 
 using std::string;
 
@@ -16,7 +17,9 @@ class Chip
 {
     public:
         // constructor - takes in a chip8 file
-        Chip(std::string fileName);
+        Chip(string fileName);
+        // constructor - takes in a chip8 file and opcode configs
+        Chip(string fileName, const int SHIFT_IMPLEMENTATION, const int JUMP_OFFSET_IMPLEMENTATION, const int STORE_LOAD_MEMORY_IMPLEMENTATION);
         // starts the chip8 emulation
         void start();
 
@@ -64,10 +67,17 @@ class Chip
         Stack stack;
         // 64x32 display
         Display display;
+        // keypad
+        Keypad keypad;
 
         // delay timer, sound timer,  60Hz
         uint8_t delayTimer;
         uint8_t soundTimer;
+
+        // opcode implementations, configurable
+        int SHIFT_IMPLEMENTATION;
+        int JUMP_OFFSET_IMPLEMENTATION;
+        int STORE_LOAD_MEMORY_IMPLEMENTATION;
 
         // used for debugging purposes
         void currentStateDebug() const;

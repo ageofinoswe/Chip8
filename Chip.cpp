@@ -1,11 +1,6 @@
 #include "Chip.h"
 #include <windows.h>
 
-const int SHIFT_IMPLEMENTATION = 2;
-const int JUMP_OFFSET_IMPLEMENTATION = 2;
-const int STORE_LOAD_MEMORY_IMPLEMENTATION = 2;
-
-
 // public
 Chip::Chip(string fileName)
     : programCounter{0x200}, indexRegister{}, generalRegisters{}, delayTimer{}, soundTimer{}
@@ -13,27 +8,40 @@ Chip::Chip(string fileName)
     initialize(fileName);
 }
 
+Chip::Chip(string fileName, const int SHIFT_IMPLEMENTATION = 1, const int JUMP_OFFSET_IMPLEMENTATION = 1, const int STORE_LOAD_MEMORY_IMPLEMENTATION = 1)
+    : programCounter{0x200}, indexRegister{}, generalRegisters{}, delayTimer{}, soundTimer{}
+{
+    initialize(fileName);
+    this->SHIFT_IMPLEMENTATION = SHIFT_IMPLEMENTATION;
+    this->JUMP_OFFSET_IMPLEMENTATION = JUMP_OFFSET_IMPLEMENTATION;
+    this->STORE_LOAD_MEMORY_IMPLEMENTATION = STORE_LOAD_MEMORY_IMPLEMENTATION;
+}
+
 void Chip::start()
 {
-    const int CPU_HZ = 300;
+    // frequencies
+    const int CPU_HZ = 700;
     const int SOUND_TIMER_HZ = 60;
     const int DELAY_TIMER_HZ = 60;
     const int FPS = 60;
-
+    // speeds
     const double CPU_CYCLE_SPEED = 1.0 / CPU_HZ;
     const double SOUND_TIMER_SPEED = 1.0 / SOUND_TIMER_HZ;
     const double DELAY_TIMER_SPEED = 1.0 / DELAY_TIMER_HZ;
     const double FRAMETIME = 1.0 / FPS;
-
+    // accumulators 
     double cpuAccumulator = 0;
     double soundAccumulator = 0;
     double delayAccumulator = 0;
     double frametimeAccumulator = 0;
 
+    // current time
     std::chrono::time_point t1 = std::chrono::steady_clock::now();
+
     bool running = true;
     while(running)
     {
+
         SDL_Event event;
         while(SDL_PollEvent(&event))
         {
@@ -42,15 +50,20 @@ void Chip::start()
                 running = false;
             }
         }
+
+        // get next time and determine delta time
         std::chrono::time_point t2 = std::chrono::steady_clock::now();
         std::chrono::duration<double> dt = t2 - t1;
         double elapsed = dt.count();
+
+        // add elapsed time to accumulators
         cpuAccumulator += elapsed;
         soundAccumulator += elapsed;
         delayAccumulator += elapsed;
         frametimeAccumulator += elapsed;
         t1 = t2;
 
+        // iterate as many times necessary to achieve frequency specified above
         while(cpuAccumulator >= CPU_CYCLE_SPEED)
         {
             cycle();
@@ -404,7 +417,6 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
         // random - generate a random number and binary AND with NN, put into VX
         case 0xC:
         {
-            srand(time(0));
             const uint8_t randNumber = rand() % 0x100; // random number between 0 and 0xFF
             setRegisterValue(X, randNumber & NN);
         }
@@ -449,36 +461,49 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
         case 0xE:
             switch(opCode & 0xF0FF)
             {
-//
+                // skip if key - skips 1 instruction if key pressed is equal to the value in VX
                 case 0xE09E:
-/*                 std::cout << "0xE09E" << std::endl;
- */                break;
-//
+                {
+                    if(keypad.getKeyboardPress() == getRegisterValue(X))
+                    {
+                        incrementProgramCounter();
+                    }
+                }
+                break;
+
+                // skip if key - skips 1 instruction if key pressed is not equal to the value in VX
                 case 0xE0A1:
-/*                 std::cout << "0xE0A1" << std::endl;
- */                break;
+                {
+                    if(keypad.getKeyboardPress() != getRegisterValue(X))
+                    {
+                        incrementProgramCounter();
+                    }
+                }
+                break;
             }
         break;
 
         case 0xF:
             switch(opCode & 0xF0FF)
             {
+                // delay timer - set VX to delay timer
                 case 0xF007:
                 {
                     setRegisterValue(X, delayTimer);
                 }
                 break;
 
+                // delay timer - sets delay timer to VX
                 case 0xF015:
                 {
                     delayTimer = getRegisterValue(X);
                 }
                 break;
 
+                // sound timer - sets sound timer to VX
                 case 0xF018:
                 {
-/*                     std::cout << "increasing sound timer by: " << static_cast<int>(getRegisterValue(X))<<std::endl;
- */                    soundTimer = getRegisterValue(X);
+                    soundTimer = getRegisterValue(X);
                 }
                 break;
 
@@ -488,10 +513,21 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                     setIndexRegister(getIndexRegister() + getRegisterValue(X));
                 }
                 break;
-//
+
+                // get key - **blocking instruction**, oscillates program counter until a valid key is pressed, stored in X
                 case 0xF00A:
-/*                 std::cout << "0xF00A" << std::endl;
- */                break;
+                {
+                    if(keypad.getKeyboardPress() == 0xFF)
+                    {
+                        decrementProgramCounter();
+                    }
+                    else
+                    {
+                        incrementProgramCounter();
+                        setRegisterValue(X, keypad.getKeyboardPress());
+                    }
+                }
+                break;
 
                 // font character - sets the index register to the address of the hex character in VX (last nibble)
                 case 0xF029:
@@ -592,14 +628,14 @@ void Chip::initialize(const string fileName)
     }
 
     // seed the rng
-    srand(time(0));
+    srand(time(NULL));
     // output file for debugging purposes    
     ram.memDump();
 }
 
 void Chip::currentStateDebug() const
 {
-    std::cout << "PROGRAM COUNTER: " << "instruction: " << std::hex << programCounter << " powershell: " << programCounter - 0x200 << std::dec <<  std::endl;
+    std::cout << "PROGRAM COUNTER: " << programCounter - 0x200 << std::dec <<  std::endl;
     std::cout << "INDEX REGISTER: " << indexRegister << std::endl;
     std::cout << "GENERAL REGISTERS: ";
     for(int i = 0 ; i < 16 ; i++)
