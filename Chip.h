@@ -19,7 +19,7 @@ class Chip
         // constructor - takes in a chip8 file
         Chip(string fileName);
         // constructor - takes in a chip8 file and opcode configs
-        Chip(string fileName, const int SHIFT_IMPLEMENTATION, const int JUMP_OFFSET_IMPLEMENTATION, const int STORE_LOAD_MEMORY_IMPLEMENTATION);
+        Chip(string fileName, int shiftImpl, int jumpOffsetImpl, int storeLoadMemImpl);
         // starts the chip8 emulation
         void start();
 
@@ -67,6 +67,7 @@ class Chip
         Stack stack;
         // 64x32 display
         Display display;
+        bool drawFlag;
         // keypad
         Keypad keypad;
 
@@ -75,9 +76,9 @@ class Chip
         uint8_t soundTimer;
 
         // opcode implementations, configurable
-        int SHIFT_IMPLEMENTATION;
-        int JUMP_OFFSET_IMPLEMENTATION;
-        int STORE_LOAD_MEMORY_IMPLEMENTATION;
+        int shiftImpl;
+        int jumpOffsetImpl;
+        int storeLoadMemImpl;
 
         // used for debugging purposes
         void currentStateDebug() const;

@@ -3,24 +3,20 @@
 
 // public
 Chip::Chip(string fileName)
-    : programCounter{0x200}, indexRegister{}, generalRegisters{}, delayTimer{}, soundTimer{}
-{   
-    initialize(fileName);
+    : Chip(fileName, 1, 1, 1)
+{
 }
 
-Chip::Chip(string fileName, const int SHIFT_IMPLEMENTATION = 1, const int JUMP_OFFSET_IMPLEMENTATION = 1, const int STORE_LOAD_MEMORY_IMPLEMENTATION = 1)
-    : programCounter{0x200}, indexRegister{}, generalRegisters{}, delayTimer{}, soundTimer{}
+Chip::Chip(string fileName, int shiftImpl = 1, int jumpOffsetImpl = 1, int storeLoadMemImpl = 1)
+    : programCounter{0x200}, indexRegister{}, generalRegisters{}, drawFlag{false}, delayTimer{}, soundTimer{}, shiftImpl{shiftImpl}, jumpOffsetImpl{jumpOffsetImpl}, storeLoadMemImpl{storeLoadMemImpl}
 {
     initialize(fileName);
-    this->SHIFT_IMPLEMENTATION = SHIFT_IMPLEMENTATION;
-    this->JUMP_OFFSET_IMPLEMENTATION = JUMP_OFFSET_IMPLEMENTATION;
-    this->STORE_LOAD_MEMORY_IMPLEMENTATION = STORE_LOAD_MEMORY_IMPLEMENTATION;
 }
 
 void Chip::start()
 {
     // frequencies
-    const int CPU_HZ = 700;
+    const int CPU_HZ = 800;
     const int SOUND_TIMER_HZ = 60;
     const int DELAY_TIMER_HZ = 60;
     const int FPS = 60;
@@ -73,7 +69,6 @@ void Chip::start()
         {
             if(soundTimer > 0)
             {
-                Beep(2000, SOUND_TIMER_SPEED * 1000);
                 soundTimer--;
             }
             soundAccumulator -= SOUND_TIMER_SPEED;
@@ -88,7 +83,11 @@ void Chip::start()
         }
         while(frametimeAccumulator >= FRAMETIME)
         {
-            display.draw();
+            if(drawFlag)
+            {
+                display.draw();
+                drawFlag = false;
+            }
             frametimeAccumulator -= FRAMETIME;
         }
 
@@ -178,6 +177,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 case 0x00E0:
                 {
                     display.clearScreen();
+                    drawFlag = true;
                 }
                 break;
 
@@ -335,7 +335,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 case 0x8006:
                 {
                     // IMPLEMENTATION 1 - set VX to VY >> 1, store shifted bit into VF
-                    if(SHIFT_IMPLEMENTATION == 1)
+                    if(shiftImpl == 1)
                     {
                         uint8_t Vy = getRegisterValue(Y);
                         uint8_t VyShifted = Vy >> 1;
@@ -344,7 +344,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                         setRegisterValue(0xF, shiftedBit);
                     }
                     // IMPLEMENTATION 2 - shift VX 1 bit to the right, store shifted bit into VF
-                    else if(SHIFT_IMPLEMENTATION == 2)
+                    else if(shiftImpl == 2)
                     {
                         uint8_t Vx = getRegisterValue(X);
                         uint8_t VxShifted = Vx >> 1;
@@ -359,7 +359,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 case 0x800E:
                 {
                     // IMPLEMENTATION 1 - set VX to VY << 1, store shifted bit into VF
-                    if(SHIFT_IMPLEMENTATION == 1)
+                    if(shiftImpl == 1)
                     {
                         uint8_t Vy = getRegisterValue(Y);
                         uint8_t VyShifted = Vy << 1;
@@ -368,7 +368,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                         setRegisterValue(0xF, shiftedBit);
                     }
                     // IMPLEMENTATION 2 - shift VX 1 bit to the left, store shifted bit into VF
-                    else if(SHIFT_IMPLEMENTATION == 2)
+                    else if(shiftImpl == 2)
                     {
                         uint8_t Vx = getRegisterValue(X);
                         uint8_t VxShifted = Vx << 1;
@@ -402,12 +402,12 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
         case 0xB:
         {
             // IMPLEMENTATION 1 - sets program counter to NNN + V0
-            if(JUMP_OFFSET_IMPLEMENTATION == 1)
+            if(jumpOffsetImpl == 1)
             {
                 setProgramCounter(NNN + getRegisterValue(0x0));
             }
             // IMPLEMENTATION 2 - sets program counter to NNN + VX
-            else if(JUMP_OFFSET_IMPLEMENTATION == 2)
+            else if(jumpOffsetImpl == 2)
             {
                 setProgramCounter(NNN + getRegisterValue(X));
             }
@@ -455,6 +455,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 y++;
                 x = getRegisterValue(X) % Display::WIDTH;
             }
+            drawFlag = true;
         }
         break;
 
@@ -464,7 +465,8 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 // skip if key - skips 1 instruction if key pressed is equal to the value in VX
                 case 0xE09E:
                 {
-                    if(keypad.getKeyboardPress() == getRegisterValue(X))
+                    const uint8_t key = getRegisterValue(X);
+                    if(keypad.checkKeyPress(key))
                     {
                         incrementProgramCounter();
                     }
@@ -474,7 +476,8 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 // skip if key - skips 1 instruction if key pressed is not equal to the value in VX
                 case 0xE0A1:
                 {
-                    if(keypad.getKeyboardPress() != getRegisterValue(X))
+                    const uint8_t key = getRegisterValue(X);
+                    if(!keypad.checkKeyPress(key))
                     {
                         incrementProgramCounter();
                     }
@@ -517,15 +520,16 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 // get key - **blocking instruction**, oscillates program counter until a valid key is pressed, stored in X
                 case 0xF00A:
                 {
-                    if(keypad.getKeyboardPress() == 0xFF)
+                    const uint8_t key = keypad.getKeyPress();
+                    if(key == 0xFF)
                     {
                         decrementProgramCounter();
                     }
                     else
                     {
-                        incrementProgramCounter();
-                        setRegisterValue(X, keypad.getKeyboardPress());
-                    }
+                        while(keypad.checkKeyPress(key)){}
+                        setRegisterValue(X, key);
+                    } 
                 }
                 break;
 
@@ -551,7 +555,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 case 0xF055:
                 {
                     // IMPLEMENTATION 1 - index register is not incremented
-                    if(STORE_LOAD_MEMORY_IMPLEMENTATION == 1)
+                    if(storeLoadMemImpl == 1)
                     {
                         for(int i = 0 ; i <= X ; i++)
                         {
@@ -559,7 +563,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                         }
                     }
                     // IMPLEMENTATION 2 - index register is incremented
-                    else if(STORE_LOAD_MEMORY_IMPLEMENTATION == 2)
+                    else if(storeLoadMemImpl == 2)
                     {
                         for(int i = 0 ; i <= X ; i++)
                         {
@@ -574,7 +578,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                 case 0xF065:
                 {
                     // IMPLEMENTATION 1 - index register is not incremented
-                    if(STORE_LOAD_MEMORY_IMPLEMENTATION == 1)
+                    if(storeLoadMemImpl == 1)
                     {
                         for(int i = 0 ; i <= X ; i++)
                         {
@@ -582,7 +586,7 @@ void Chip::execute(const uint16_t opCode, const uint16_t instruction, const uint
                         }
                     }
                     // IMPLEMENTATION 2 - index register is incremented
-                    else if(STORE_LOAD_MEMORY_IMPLEMENTATION == 2)
+                    else if(storeLoadMemImpl == 2)
                     {
                         for(int i = 0 ; i <= X ; i++)
                         {
