@@ -16,7 +16,7 @@ Chip::Chip(string fileName, int shiftImpl = 1, int jumpOffsetImpl = 1, int store
 void Chip::start()
 {
     // frequencies
-    const int CPU_HZ = 800;
+    const int CPU_HZ = 700;
     const int SOUND_TIMER_HZ = 60;
     const int DELAY_TIMER_HZ = 60;
     const int FPS = 60;
