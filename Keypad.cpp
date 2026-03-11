@@ -8,44 +8,98 @@
 
 // public
 Keypad::Keypad()
-    : keyboardState{SDL_GetKeyboardState(NULL)}
+    : keyboard{SDL_GetKeyboardState(NULL)}, keyboardState{}
 {       
+    scanCodes[0] = SDL_SCANCODE_1;
+    scanCodes[1] = SDL_SCANCODE_2;
+    scanCodes[2] = SDL_SCANCODE_3;
+    scanCodes[3] = SDL_SCANCODE_4;
+    scanCodes[4] = SDL_SCANCODE_Q;
+    scanCodes[5] = SDL_SCANCODE_W;
+    scanCodes[6] = SDL_SCANCODE_E;
+    scanCodes[7] = SDL_SCANCODE_R;
+    scanCodes[8] = SDL_SCANCODE_A;
+    scanCodes[9] = SDL_SCANCODE_S;
+    scanCodes[10] = SDL_SCANCODE_D;
+    scanCodes[11] = SDL_SCANCODE_F;
+    scanCodes[12] = SDL_SCANCODE_Z;
+    scanCodes[13] = SDL_SCANCODE_X;
+    scanCodes[14] = SDL_SCANCODE_C;
+    scanCodes[15] = SDL_SCANCODE_V;
 }
 
-uint8_t Keypad::getKeyboardPress()
+const bool Keypad::checkKeyPress(const int chipKey)
 {
-    if(keyboardState[SDL_SCANCODE_1])
-        return 0x1;
-    else if(keyboardState[SDL_SCANCODE_2])
-        return 0x2;
-    else if(keyboardState[SDL_SCANCODE_3])
-        return 0x3;
-    else if(keyboardState[SDL_SCANCODE_4])
-        return 0xC;
-    else if(keyboardState[SDL_SCANCODE_Q])
-        return 0x4;
-    else if(keyboardState[SDL_SCANCODE_W])
-        return 0x5;
-    else if(keyboardState[SDL_SCANCODE_E])
-        return 0x6;
-    else if(keyboardState[SDL_SCANCODE_R])
-        return 0xD;
-    else if(keyboardState[SDL_SCANCODE_A])
-        return 0x7;
-    else if(keyboardState[SDL_SCANCODE_S])
-        return 0x8;
-    else if(keyboardState[SDL_SCANCODE_D])
-        return 0x9;    
-    else if(keyboardState[SDL_SCANCODE_F])
-        return 0xE;
-    else if(keyboardState[SDL_SCANCODE_Z])
-        return 0xA;    
-    else if(keyboardState[SDL_SCANCODE_X])
-        return 0x0;
-    else if(keyboardState[SDL_SCANCODE_C])
-        return 0xB;
-    else if(keyboardState[SDL_SCANCODE_V])
-        return 0xF;
-    else
-        return 0xFF;
+    SDL_PumpEvents();
+    const bool* kbState = getKeyboardState();
+    switch(chipKey)
+    {
+        case 0x1: return kbState[0];
+        case 0x2: return kbState[1];
+        case 0x3: return kbState[2];
+        case 0xC: return kbState[3];
+
+        case 0x4: return kbState[4];
+        case 0x5: return kbState[5];
+        case 0x6: return kbState[6];
+        case 0xD: return kbState[7];
+
+        case 0x7: return kbState[8];
+        case 0x8: return kbState[9];
+        case 0x9: return kbState[10];
+        case 0xE: return kbState[11];
+
+        case 0xA: return kbState[12];
+        case 0x0: return kbState[13];
+        case 0xB: return kbState[14];
+        case 0xF: return kbState[15];
+        default: return false;
+    }
+    return false;
+}
+
+const uint8_t Keypad::getKeyPress()
+{
+    const bool* kbState = getKeyboardState();
+    for(int key = 0 ; key < SIZE ; key++)
+    {
+        if(kbState[key])
+        {
+            switch(key)
+            {
+                case 0: return 0x1;
+                case 1: return 0x2;
+                case 2: return 0x3;
+                case 3: return 0xC;
+
+                case 4: return 0x4;
+                case 5: return 0x5;
+                case 6: return 0x6;
+                case 7: return 0xD;
+
+                case 8: return 0x7;
+                case 9: return 0x8;
+                case 10: return 0x9;
+                case 11: return 0xE;
+                
+                case 12: return 0xA;
+                case 13: return 0x0;
+                case 14: return 0xB;
+                case 15: return 0xF;
+                default: return 0xFF;
+            }
+            return 0xFF;
+        }
+    }
+    return 0xFF;
+}
+
+// private
+const bool* Keypad::getKeyboardState()
+{
+    for(int i = 0 ; i < SIZE ; i++)
+    {
+        keyboardState[i] = keyboard[scanCodes[i]];
+    }
+    return keyboardState;
 }

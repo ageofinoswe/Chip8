@@ -14,11 +14,21 @@ class Keypad
     public:
         // constructor
         Keypad();
-        // gets the chip8 keyboard value that was pressed
-        uint8_t getKeyboardPress();
+        // checks if a valid chip8 key is being pressed
+        const bool checkKeyPress(const int chipKey);
+        // gets the current chip8 key being pressed
+        const uint8_t getKeyPress();
+        // number of keys
+        static constexpr int SIZE = 16;
+
     private:
-        // stores the SDL keyboard state
-        const bool* keyboardState;
+        // stores the SDL keyboard
+        const bool* keyboard;
+        // gets the current state of the keyboard
+        const bool* getKeyboardState();
+        // stores the state of the keyboard
+        bool keyboardState[SIZE];
+        int scanCodes[SIZE];
 };
 
 #endif
